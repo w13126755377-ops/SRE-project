@@ -60,6 +60,8 @@
 process/
 ├── meeting-minutes/      # 会议纪要
 ├── plans/                # 周计划与 action items 跟踪
+├── worklog/              # 仓库工作记录（Git 提交日志）
+└── versions/             # 版本记录（版本 tag 与 changelog）
 ```
 
 ### 3.5 推荐工具
