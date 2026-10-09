@@ -72,8 +72,9 @@
 ```
 SRE-project/
 ├── README.md                          # 本文件
-├── PROJECT-MILESTONE1-第六组-SRE小组.md   # M1 Team Workflow
-├── PROJECT-MILESTONE2-第六组-SRE小组.md   # M2 Project Proposal Presentation
+├── PROJECT-MILESTONE1-第六组-SRE小组.md / .pdf   # M1 Team Workflow
+├── PROJECT-MILESTONE2-Vision&Scope-第六组-SRE小组.md / .pdf   # M2 Vision & Scope 文档
+├── PROJECT-MILESTONE2-第六组-SRE小组-v2.pptx / -v2.pdf   # M2 Project Proposal Presentation
 └── process/                           # 过程管理
     ├── meeting-minutes/               # 会议纪要
     ├── plans/                         # 周计划与 action items 跟踪
