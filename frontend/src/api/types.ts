@@ -15,6 +15,12 @@ export type AnswerStatus =
   | 'answered'
   | 'insufficient_evidence'
   | 'unresolved_conflict';
+export type ResolutionOutcome = 'resolved' | 'unresolved';
+export type ResolutionMethod =
+  | 'turn_order'
+  | 'source_authority'
+  | 'evidence_count'
+  | 'none';
 
 export interface SourceRef {
   session_id: string;
@@ -56,11 +62,23 @@ export interface CandidateValidity {
   reason: string;
 }
 
+export interface ConflictResolution {
+  relation_id: string;
+  from_memory_id: string;
+  to_memory_id: string;
+  resolution: ResolutionOutcome;
+  winner_memory_id: string | null;
+  loser_memory_id: string | null;
+  method: ResolutionMethod;
+  reason: string;
+}
+
 export interface AnswerResult {
   status: AnswerStatus;
   text: string | null;
   cited_memory_ids: string[];
   conflict_explanation: string | null;
+  resolution_note: string | null;
 }
 
 export interface QueryResult {
@@ -75,6 +93,7 @@ export interface QueryResult {
   validity: CandidateValidity[];
   effective_memory_ids: string[];
   conflict_memory_ids: string[];
+  conflict_resolutions: ConflictResolution[];
   answer: AnswerResult;
   run_config: Record<string, unknown>;
 }

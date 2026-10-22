@@ -29,6 +29,7 @@ def generate_answer(
     conflict_memories: list[dict[str, Any]],
     conflict_relations: list[dict[str, Any]],
     settings: Settings | None = None,
+    resolution_note: str | None = None,
 ) -> AnswerResult:
     s = settings or get_settings()
 
@@ -100,4 +101,5 @@ def generate_answer(
         text=answer_text,
         cited_memory_ids=cited,
         conflict_explanation=None,
+        resolution_note=resolution_note,
     )

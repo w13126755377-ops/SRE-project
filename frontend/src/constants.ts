@@ -2,6 +2,7 @@ import type {
   AnswerStatus,
   RecordStatus,
   RelationType,
+  ResolutionMethod,
   ValidityStatus,
 } from './api/types';
 
@@ -76,6 +77,16 @@ export const ANSWER_META: Record<
 export const RECORD_STATUS_META: Record<RecordStatus, { label: string; color: string }> = {
   ready: { label: '就绪', color: 'green' },
   needs_review: { label: '待复核', color: 'gold' },
+};
+
+export const RESOLUTION_METHOD_META: Record<
+  ResolutionMethod,
+  { label: string; color: string }
+> = {
+  turn_order: { label: '轮次自纠', color: 'green' },
+  source_authority: { label: '来源可信度', color: 'blue' },
+  evidence_count: { label: '证据量', color: 'purple' },
+  none: { label: '未消解', color: 'default' },
 };
 
 export const SPLIT_META: Record<string, { label: string; color: string }> = {

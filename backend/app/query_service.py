@@ -20,12 +20,14 @@ from .llm.client import LLMClient, get_llm_client
 from .models import (
     AnswerResult,
     CandidateValidity,
+    ConflictResolution,
     MemoryWithScore,
     QueryRequest,
     QueryResult,
     Relation,
 )
 from .reasoning import relations as relation_judge
+from .reasoning.resolution import resolve_conflicts
 from .reasoning.validity import resolve_validity
 from .retrieval.retriever import Retriever
 
@@ -48,6 +50,98 @@ def _flatten_candidates(candidates: list[MemoryWithScore]) -> list[dict[str, Any
             "sources": [s.model_dump() for s in m.sources],
         })
     return out
+
+
+def _collect_source_meta(
+    db: Database,
+    conversation_id: str,
+    candidates: list[dict[str, Any]],
+) -> dict[str, list[dict[str, Any]]]:
+    """聚合冲突候选的来源轮次元数据（speaker / session_id / turn_no）。
+
+    只查询涉及冲突的记忆，避免对全部候选发起逐条查询。
+    """
+    turn_ids: set[str] = set()
+    for c in candidates:
+        for s in c.get("sources", []):
+            turn_ids.add(s["turn_id"])
+    if not turn_ids:
+        return {}
+
+    placeholders = ",".join("?" for _ in turn_ids)
+    rows = db.query(
+        f"SELECT turn_id, session_id, speaker, turn_no FROM turns "
+        f"WHERE conversation_id=? AND turn_id IN ({placeholders})",
+        (conversation_id, *sorted(turn_ids)),
+    )
+    turn_info = {
+        r["turn_id"]: {
+            "session_id": r["session_id"],
+            "speaker": r["speaker"],
+            "turn_no": r["turn_no"],
+        }
+        for r in rows
+    }
+
+    meta: dict[str, list[dict[str, Any]]] = {}
+    for c in candidates:
+        entries = []
+        for s in c.get("sources", []):
+            info = turn_info.get(s["turn_id"])
+            if info:
+                entries.append(info)
+        meta[c["memory_id"]] = entries
+    return meta
+
+
+def _apply_resolutions(
+    validity_items: list[dict[str, Any]],
+    resolutions: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[str], list[str]]:
+    """把消解结果回写到有效性：winner → effective，loser → historical。
+
+    返回 (逐条有效性, effective_ids, conflict_ids)。未消解的冲突保持 conflict。
+    """
+    winners = {r["winner_memory_id"] for r in resolutions
+               if r["resolution"] == "resolved" and r.get("winner_memory_id")}
+    losers = {r["loser_memory_id"] for r in resolutions
+              if r["resolution"] == "resolved" and r.get("loser_memory_id")}
+
+    new_validity: list[dict[str, Any]] = []
+    for item in validity_items:
+        mid = item["memory_id"]
+        if mid in winners:
+            new_validity.append({
+                "memory_id": mid,
+                "status": "effective",
+                "reason": "冲突消解后保留的一方，作为当前有效证据",
+            })
+        elif mid in losers:
+            new_validity.append({
+                "memory_id": mid,
+                "status": "historical",
+                "reason": "冲突消解中被判定为不可靠的一方，保留为历史证据",
+            })
+        else:
+            new_validity.append(item)
+
+    effective = [x["memory_id"] for x in new_validity if x["status"] == "effective"]
+    conflict = [x["memory_id"] for x in new_validity if x["status"] == "conflict"]
+    return new_validity, effective, conflict
+
+
+def _resolution_note(resolutions: list[dict[str, Any]]) -> str | None:
+    resolved = [r for r in resolutions if r["resolution"] == "resolved"]
+    if not resolved:
+        return None
+    methods = {r["method"] for r in resolved}
+    label = {
+        "turn_order": "轮次自纠",
+        "source_authority": "来源可信度",
+        "evidence_count": "证据量",
+    }
+    names = "、".join(label[m] for m in sorted(methods) if m in label)
+    return f"本次查询消解了 {len(resolved)} 条冲突（依据：{names}），已按当前有效记忆作答。"
 
 
 def run_query(
@@ -82,9 +176,19 @@ def run_query(
         flat, rel_items, settings=s,
     )
 
+    # 3.5 冲突消解（Bonus）：对 CONFLICT 尝试确定性消解，再回写有效性
+    conflict_relations = [r for r in rel_items if r["type"] == "CONFLICT"]
+    conflict_candidates = [c for c in flat if c["memory_id"] in set(conflict_ids)]
+    source_meta = _collect_source_meta(db, req.conversation_id, conflict_candidates)
+    resolution_items = resolve_conflicts(conflict_relations, flat, source_meta=source_meta)
+    if resolution_items:
+        validity_items, effective_ids, conflict_ids = _apply_resolutions(
+            validity_items, resolution_items,
+        )
+    resolution_note = _resolution_note(resolution_items)
+
     effective_flat = [c for c in flat if c["memory_id"] in set(effective_ids)]
     conflict_flat = [c for c in flat if c["memory_id"] in set(conflict_ids)]
-    conflict_relations = [r for r in rel_items if r["type"] == "CONFLICT"]
 
     # 4. 回答生成（FR-11）
     answer: AnswerResult = generate_answer(
@@ -95,6 +199,7 @@ def run_query(
         conflict_memories=conflict_flat,
         conflict_relations=conflict_relations,
         settings=s,
+        resolution_note=resolution_note,
     )
 
     result = QueryResult(
@@ -109,6 +214,7 @@ def run_query(
         validity=[CandidateValidity.model_validate(v) for v in validity_items],
         effective_memory_ids=effective_ids,
         conflict_memory_ids=conflict_ids,
+        conflict_resolutions=[ConflictResolution.model_validate(r) for r in resolution_items],
         answer=answer,
         run_config={
             "retrieval": "tfidf",

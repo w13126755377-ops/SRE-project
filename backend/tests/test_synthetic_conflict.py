@@ -43,7 +43,23 @@ def test_synthetic_conflict_end_to_end(db):
 
     assert len(result.candidates) == 2
     assert [relation.type for relation in result.relations] == ["CONFLICT"]
-    assert result.answer.status == "unresolved_conflict"
-    assert len(result.conflict_memory_ids) == 2
-    assert {item.status for item in result.validity} == {"conflict"}
-    assert result.answer.conflict_explanation
+
+    # 冲突已被「轮次自纠」消解：同一会话内更靠后的失业自述胜出
+    assert len(result.conflict_resolutions) == 1
+    resolution = result.conflict_resolutions[0]
+    assert resolution.resolution == "resolved"
+    assert resolution.method == "turn_order"
+    assert resolution.winner_memory_id and resolution.loser_memory_id
+
+    by_id = {c.memory.memory_id: c.memory for c in result.candidates}
+    winner = by_id[resolution.winner_memory_id]
+    loser = by_id[resolution.loser_memory_id]
+    assert winner.value == "unemployed"
+    assert loser.value == "DoorDash"
+
+    # 消解后：冲突集合清空，有效性变为「一方有效 + 一方历史」，正常作答
+    assert result.conflict_memory_ids == []
+    assert {item.status for item in result.validity} == {"effective", "historical"}
+    assert result.answer.status == "answered"
+    assert "lost my job" in (result.answer.text or "")
+    assert result.answer.resolution_note

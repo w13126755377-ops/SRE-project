@@ -19,6 +19,8 @@ RecordStatus = Literal["ready", "needs_review"]
 RelationType = Literal["RETAIN", "UPDATE", "SUPERSEDE", "CONFLICT"]
 ValidityStatus = Literal["effective", "historical", "conflict", "uncertain", "irrelevant"]
 AnswerStatus = Literal["answered", "insufficient_evidence", "unresolved_conflict"]
+ResolutionOutcome = Literal["resolved", "unresolved"]
+ResolutionMethod = Literal["turn_order", "source_authority", "evidence_count", "none"]
 
 
 class SourceRef(BaseModel):
@@ -77,12 +79,31 @@ class CandidateValidity(BaseModel):
     reason: str = Field(min_length=1)
 
 
+class ConflictResolution(BaseModel):
+    """冲突消解结果（查询级，不回写原始 Memory）。
+
+    resolution=resolved 时给出 winner / loser；unresolved 时双方并存（BR-06）。
+    method 说明消解依据，便于前端展示与评测可解释性。
+    """
+
+    relation_id: str
+    from_memory_id: str
+    to_memory_id: str
+    resolution: ResolutionOutcome
+    winner_memory_id: Optional[str] = None
+    loser_memory_id: Optional[str] = None
+    method: ResolutionMethod
+    reason: str = Field(min_length=1)
+
+
 class AnswerResult(BaseModel):
     status: AnswerStatus
     text: Optional[str] = None
     cited_memory_ids: list[str] = []
     # status=unresolved_conflict 时说明分歧双方（FR-11）
     conflict_explanation: Optional[str] = None
+    # 存在被消解的冲突时，说明消解结果（供前端展示，不影响 status）
+    resolution_note: Optional[str] = None
 
 
 class QueryResult(BaseModel):
@@ -101,6 +122,7 @@ class QueryResult(BaseModel):
     validity: list[CandidateValidity]
     effective_memory_ids: list[str]
     conflict_memory_ids: list[str]
+    conflict_resolutions: list[ConflictResolution] = []
     answer: AnswerResult
     run_config: dict[str, Any] = {}
 

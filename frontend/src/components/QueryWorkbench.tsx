@@ -34,6 +34,7 @@ import type {
 import {
   ANSWER_META,
   getPresets,
+  RESOLUTION_METHOD_META,
   type PresetQuestion,
 } from '../constants';
 import { countByValidity, formatTime, shortMemoryId } from '../utils';
@@ -392,6 +393,16 @@ function QueryResultView({ result }: { result: QueryResult }) {
           />
         ) : null}
 
+        {result.answer.resolution_note ? (
+          <Alert
+            type="success"
+            showIcon
+            message="冲突已消解"
+            description={result.answer.resolution_note}
+            className="inline-alert"
+          />
+        ) : null}
+
         {result.run_config.llm_provider === 'mock' ? (
           <div className="mock-note">
             当前为 mock 演示模式：回答由规则从有效记忆中摘录，未调用外部 LLM。
@@ -485,6 +496,89 @@ function QueryResultView({ result }: { result: QueryResult }) {
         </div>
         <RelationTimeline relations={result.relations} memories={memoryMap} />
       </Card>
+
+      {result.conflict_resolutions.length ? (
+        <Card className="academic-card" bordered={false}>
+          <div className="card-heading compact">
+            <div>
+              <div className="section-kicker">Conflict Resolution</div>
+              <div className="card-title">冲突消解</div>
+              <div className="card-subtitle">
+                确定性规则在查询级消解冲突：判定一方为当前有效，另一方保留为历史证据，不回写原始记忆。
+              </div>
+            </div>
+            <Tag>{result.conflict_resolutions.length} 条</Tag>
+          </div>
+          <Space direction="vertical" size={8} style={{ width: '100%' }}>
+            {result.conflict_resolutions.map((resolution) => {
+              const meta = RESOLUTION_METHOD_META[resolution.method];
+              const winner = resolution.winner_memory_id
+                ? memoryMap.get(resolution.winner_memory_id)
+                : undefined;
+              const loser = resolution.loser_memory_id
+                ? memoryMap.get(resolution.loser_memory_id)
+                : undefined;
+              return (
+                <Alert
+                  key={resolution.relation_id}
+                  type={resolution.resolution === 'resolved' ? 'success' : 'warning'}
+                  showIcon
+                  message={
+                    <Space size={8} wrap>
+                      <Tag color={meta.color}>{meta.label}</Tag>
+                      <span>
+                        {resolution.resolution === 'resolved'
+                          ? '已消解'
+                          : '未消解（双方并存待核查）'}
+                      </span>
+                    </Space>
+                  }
+                  description={
+                    <div>
+                      <div>{resolution.reason}</div>
+                      {resolution.resolution === 'resolved' &&
+                      resolution.winner_memory_id &&
+                      resolution.loser_memory_id ? (
+                        <div
+                          style={{
+                            marginTop: 8,
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            gap: 8,
+                            alignItems: 'center',
+                          }}
+                        >
+                          <span className="muted">保留（有效）</span>
+                          <Button
+                            type="link"
+                            size="small"
+                            onClick={() => winner && openMemory(winner.memory_id)}
+                          >
+                            {winner
+                              ? truncate(winner.content, 32)
+                              : shortMemoryId(resolution.winner_memory_id)}
+                          </Button>
+                          <span className="muted">标记为历史</span>
+                          <Button
+                            type="link"
+                            size="small"
+                            onClick={() => loser && openMemory(loser.memory_id)}
+                          >
+                            {loser
+                              ? truncate(loser.content, 32)
+                              : shortMemoryId(resolution.loser_memory_id)}
+                          </Button>
+                        </div>
+                      ) : null}
+                    </div>
+                  }
+                  className="inline-alert"
+                />
+              );
+            })}
+          </Space>
+        </Card>
+      ) : null}
 
       <Card className="academic-card" bordered={false}>
         <div className="card-heading compact">
