@@ -5,10 +5,10 @@
 | 材料 | 文档 |
 |---|---|
 | 课程项目说明 | [Project Specification](Project-Specification.pdf) |
-| M1 团队工作流 | [Markdown](PROJECT-MILESTONE1-第六组-SRE小组.md) · [PDF](PROJECT-MILESTONE1-第六组-SRE小组.pdf) |
-| M2 愿景与范围 | [Markdown](PROJECT-MILESTONE2-Vision&Scope-第六组-SRE小组.md) · [PDF](PROJECT-MILESTONE2-Vision&Scope-第六组-SRE小组.pdf) |
-| M2 提案展示 | [PowerPoint](PROJECT-MILESTONE2-第六组-SRE小组-v2.pptx) · [PDF](PROJECT-MILESTONE2-第六组-SRE小组-v2.pdf) |
-| M3 需求规格说明书 | [SRS v0.1](PROJECT-MILESTONE3-第六组-SRE小组.md) |
+| M1 团队工作流 | [Markdown](process/PROJECT-MILESTONE1-第六组-SRE小组.md) · [PDF](process/PROJECT-MILESTONE1-第六组-SRE小组.pdf) |
+| M2 愿景与范围 | [Markdown](MILESTONE2/PROJECT-MILESTONE2-Vision&Scope-第六组-SRE小组.md) · [PDF](MILESTONE2/PROJECT-MILESTONE2-Vision&Scope-第六组-SRE小组.pdf) |
+| M2 提案展示 | [PowerPoint](MILESTONE2/PROJECT-MILESTONE2-第六组-SRE小组-v2.pptx) · [PDF](MILESTONE2/PROJECT-MILESTONE2-第六组-SRE小组-v2.pdf) |
+| M3 需求规格说明书 | [SRS v0.2](MILESTONE3/PROJECT-MILESTONE3-第六组-SRE小组.md) · [PDF（5 页）](../output/pdf/PROJECT-MILESTONE3-第六组-SRE小组.pdf) |
 | M4 功能测试 | [测试报告](process/testing/M4-功能测试报告.md) |
 | 过程管理 | [说明](process/README.md) · [周计划](process/plans/weekly-action-items.md) · [版本记录](process/versions/changelog.md) |
 
